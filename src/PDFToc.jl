@@ -31,7 +31,7 @@ function readtoc(filename, patterns...)
                 isnothing(m) && continue
                 return f(m)
             end
-            println(line)
+            println("No pattern matching: ", line)
         end
     end
     s = [Vector{Heading}()]
@@ -81,13 +81,13 @@ end
 
 pdfmarks(h; kwargs...) = pdfmarks(stdout, h; kwargs...)
 
-function addtoc(pdffile, tocfile, patterns...; kwargs...)
+function addtoc(pdffile, tocfile, patterns...; debug=false, kwargs...)
     toc = readtoc(tocfile, patterns...)
     filename = first(splitext(pdffile))
     open("$(filename).pdfmarks", "w") do file
         pdfmarks(file, toc; kwargs...)
     end
-    run(`gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=$(filename)-out.pdf $(pdffile) $(filename).pdfmarks`)
+    debug || run(`gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=$(filename)-out.pdf $(pdffile) $(filename).pdfmarks`)
 end
 
 export readtoc, pdfmarks, addtoc
