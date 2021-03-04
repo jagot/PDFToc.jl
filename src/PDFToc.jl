@@ -22,6 +22,24 @@ function Base.show(io::IO, ::MIME"text/plain", hs::Vector{Heading})
     foreach(h -> show(io, MIME"text/plain"(), h), hs)
 end
 
+function clean_hierarchy!(headings)
+    nh = length(headings)
+    i = 1
+    while i < nh
+        li = headings[i][end]
+        j = i+1
+        lj = headings[j][end]
+        if lj-li > 1
+            k = something(findfirst(h -> h[end]≠lj, view(headings, j:nh)), nh-j) + j - 1
+            for l in j:k-1
+                title, page = headings[l]
+                headings[l] = (title, page, li+1)
+            end
+            i = k
+        end
+        i += 1
+    end
+end
 
 function readtoc(filename, patterns...)
     headings = open(filename, "r") do file
@@ -34,6 +52,7 @@ function readtoc(filename, patterns...)
             println("No pattern matching: ", line)
         end
     end
+    clean_hierarchy!(headings)
     s = [Vector{Heading}()]
     for h in headings
         title,page,level = h[1], h[2], h[3]
