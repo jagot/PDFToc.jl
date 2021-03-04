@@ -75,7 +75,7 @@ function psescape(s)
     end
 end
 
-function pdfmarks(io::IO, h::Heading; offset=0)
+function pdfmarks(io::IO, h::Heading; offset=0, kwargs...)
     write(io, "[")
     c = length(h.children)
     c > 0 && write(io, "/Count $(c) ")
@@ -100,15 +100,46 @@ end
 
 pdfmarks(h; kwargs...) = pdfmarks(stdout, h; kwargs...)
 
+# https://tex.stackexchange.com/a/390337
+function pdfpages(io::IO; pages=[], kwargs...)
+    isempty(pages) && return
+    spec = join(["$i << $s >>" for (i,s) in pages], "\n        ")
+    s = """
+
+[
+  {Catalog} <<
+    /PageLabels <<
+      /Nums [
+        $spec
+      ]
+    >>
+  >>
+/PUT pdfmark
+"""
+    write(io, s)
+end
+
+page_common(style, n=1; prefix=nothing) =
+    (isnothing(prefix) ?
+     "" : "/P $(prefix) ")*"/S /$(style) /St $(n)"
+
+arabic(args...;kwargs...) = page_common("D", args...; kwargs...)
+Roman(args...;kwargs...) = page_common("R", args...; kwargs...)
+roman(args...;kwargs...) = page_common("r", args...; kwargs...)
+Alph(args...;kwargs...) = page_common("A", args...; kwargs...)
+alph(args...;kwargs...) = page_common("a", args...; kwargs...)
+
 function addtoc(pdffile, tocfile, patterns...; debug=false, kwargs...)
     toc = readtoc(tocfile, patterns...)
     filename = first(splitext(pdffile))
     open("$(filename).pdfmarks", "w") do file
         pdfmarks(file, toc; kwargs...)
+        pdfpages(file; kwargs...)
     end
     debug || run(`gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=$(filename)-out.pdf $(pdffile) $(filename).pdfmarks`)
 end
 
-export readtoc, pdfmarks, addtoc
+export readtoc, pdfmarks, addtoc,
+    arabic, Roman, roman, Alph, alph
 
 end # module
